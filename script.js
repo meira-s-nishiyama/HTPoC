@@ -100,7 +100,7 @@ function tick()
 function Page_init()
 {
     if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js")
+        navigator.serviceWorker.register("sw.js")
             .then(function (registration)
             {
                 console.log("serviceWorker registed.");
