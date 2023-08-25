@@ -1,7 +1,3 @@
-/*
-self.addEventListener("fetch", function(e) {
-});
-*/
 window.addEventListener("load", Page_init);
 
 /* -- グローバル変数（手抜き） ------------------------------------ */
@@ -104,7 +100,7 @@ function tick()
 function Page_init()
 {
     if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("script.js")
+        navigator.serviceWorker.register("sw.js")
             .then(function (registration)
             {
                 console.log("serviceWorker registed.");
