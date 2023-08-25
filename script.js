@@ -1,6 +1,4 @@
-self.addEventListener("fetch",
-function(e)
-{
+self.addEventListener("fetch", function(e) {
 });
 
 window.addEventListener("load", Page_init);
