@@ -1,3 +1,8 @@
+self.addEventListener("fetch",
+function(e)
+{
+});
+
 window.addEventListener("load", Page_init);
 
 /* -- グローバル変数（手抜き） ------------------------------------ */
