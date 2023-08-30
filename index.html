@@ -91,6 +91,14 @@
         </section>
 <! ================================================================ !>
 
+    <script>
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.register (
+          '/HTPoC/sw.js',
+          {scope: '/HTPoC/'}
+        )
+      }
+    </script>
 
     </body>
 </html>
