@@ -1,4 +1,4 @@
-const GHPATH     = "/HTPoC.github.io";
+const GHPATH     = "/HTPoC";
 const APP_PREFIX = "HTPoC_";
 const VERSION    = "version_001";
 const CACHE_NAME = APP_PREFIX + VERSION;
