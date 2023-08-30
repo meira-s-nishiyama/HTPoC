@@ -187,7 +187,7 @@ function Camera_recognizeQR()
 /* ---------------------------------------------------------------- */
 function Page_init()
 {
-    ServiceWorker_register();
+//    ServiceWorker_register();
     Camera_init();
 }
 /* ---------------------------------------------------------------- */
