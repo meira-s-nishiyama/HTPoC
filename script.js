@@ -13,7 +13,7 @@ function ServiceWorker_register()
         return false;
     }
 
-    navigator.serviceWorker.register("/HTPoC/sw.js", {scope: "/HTPoC/"})
+    navigator.serviceWorker.register("/HTPoC.github.io/sw.js", {scope: "/HTPoC.github.io/"})
     .then(function (registration)
     {
         console.log("serviceWorker registed.");
