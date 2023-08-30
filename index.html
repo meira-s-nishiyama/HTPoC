@@ -33,7 +33,7 @@
         <div id="div_cameraMsg">🎥 カメラを使用することができません。カメラが接続されているか、確認して下さい。</div>
         <canvas id="canvas_video" hidden></canvas>
 
-        <button type="button" id="button_scan">QR読取</button>
+        <button type="button" id="button_scan" onclick="Scan_start()">QR読取</button>
 
         <div id="div_recognition" hidden>
             <div id="div_recognitionMsg">QRコードが見つかりません。</div>
@@ -103,8 +103,6 @@
       }
 
         alert("START: Page_init()");
-
-        document.getElementById("button_scan").addEventListener("click", Scan_start);
 
     Camera_init();
     alert("END: Page_init()");
