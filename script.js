@@ -1,142 +1,201 @@
 window.addEventListener("load", Page_init);
+document.getElementById("button_scan").addEventListener("click", Scan_start);
 
-/* -- グローバル変数（手抜き） ------------------------------------ */
-var video_qr = document.createElement("video");
-var canvas_video = document.getElementById("canvas_video");
-var canvas_2d = canvas_video.getContext("2d");
-var loadingMessage = document.getElementById("loadingMessage");
-var outputContainer = document.getElementById("output");
-var outputMessage = document.getElementById("outputMessage");
-var outputData = document.getElementById("outputData");
+
 /* ---------------------------------------------------------------- */
-
-/* -- フロントカメラ有効化 ---------------------------------------- */
-/* ※本当はコールバック関数でやるべき。これも手抜き。               */
-navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", zoom: true } })
-.then(function(stream)
+/* ServiceWorker登録                                                */
+/* ---------------------------------------------------------------- */
+function ServiceWorker_register()
 {
-    const [track]      = stream.getVideoTracks();
-    const capabilities = track.getCapabilities();
-
-    if (undefined === capabilities.zoom) {
-        alert("ズームが使用できません。スマホにてテストして下さい。");
+    if ("serviceWorker" in navigator) {
     } else {
-//        alert(capabilities.zoom.min + ", " + capabilities.zoom.max + ", " + capabilities.zoom.step);
-        track.applyConstraints({ advanced: [{ zoom: capabilities.zoom.max }]});
+        alert("ServiceWorkerに対応していません。");
+        return false;
     }
 
-    video_qr.srcObject = stream;
-    video_qr.setAttribute("playsinline", true); // required to tell iOS safari we don't want fullscreen
-    video_qr.play();
-    requestAnimationFrame(tick);
-});
-/* ---------------------------------------------------------------- */
+    navigator.serviceWorker.register("/HTPoC/sw.js", {scope: "/HTPoC/"})
+    .then(function (registration)
+    {
+        console.log("serviceWorker registed.");
+    })
+    .catch(function (error)
+    {
+        alert("ServiceWorkerに対応していません。 " + error);
+    });
 
-/* ---------------------------------------------------------------- */
-/* 直線描写                                                         */
-/* ---------------------------------------------------------------- */
-function drawLine(begin, end, color) {
-    canvas_2d.beginPath();
-    canvas_2d.moveTo(begin.x, begin.y);
-    canvas_2d.lineTo(end.x, end.y);
-    canvas_2d.lineWidth = 4;
-    canvas_2d.strokeStyle = color;
-    canvas_2d.stroke();
+    return true;
 }
 /* ---------------------------------------------------------------- */
+
+
+/* ---------------------------------------------------------------- */
+/* カメラ初期化                                                     */
+/* ---------------------------------------------------------------- */
+function Camera_init()
+{
+    // -- 設定 -----------------------------------------------------------
+    const lst_config = {
+        video: {
+            facingMode: "environment",
+            zoom      : true
+        }
+    };
+    // -------------------------------------------------------------------
+
+    // -- 無限ループ開始 ※コールバック化すべし。 ------------------------
+    navigator.mediaDevices.getUserMedia(lst_config)
+    .then(function(stream)
+    {
+        // -- 最大望遠 --------------------------------------------------------
+        const [track]      = stream.getVideoTracks();
+        const capabilities = track.getCapabilities();
+
+        if (undefined === capabilities.zoom) {
+            alert("ズームが使用できません。PCでも動作しますが、スマホにてテストして下さい。");
+        } else {
+//            alert(capabilities.zoom.min + ", " + capabilities.zoom.max + ", " + capabilities.zoom.step);
+            track.applyConstraints(
+                {
+                    advanced: [
+                        {
+                            zoom: capabilities.zoom.max
+                        }
+                    ]
+                }
+            );
+        }
+        // -------------------------------------------------------------------
+
+        // -- 撮影開始 -------------------------------------------------------
+        const video_camera = document.getElementById("video_camera");
+
+        video_camera.srcObject = stream;
+        video_camera.setAttribute("playsinline", true);
+        video_camera.play();
+        // -------------------------------------------------------------------
+
+        requestAnimationFrame(Camera_recognizeQR);
+    });
+    // -------------------------------------------------------------------
+}
+/* ---------------------------------------------------------------- */
+
+
+/* ---------------------------------------------------------------- */
+/* CANVAS<2D>直線描写                                               */
+/* ---------------------------------------------------------------- */
+function Canvas2d_drawLine(canvas, begin, end, color) {
+    canvas.beginPath();
+    canvas.moveTo(begin.x, begin.y);
+    canvas.lineTo(end.x, end.y);
+    canvas.lineWidth = 4;
+    canvas.strokeStyle = color;
+    canvas.stroke();
+}
+/* ---------------------------------------------------------------- */
+
 
 /* ---------------------------------------------------------------- */
 /* QR認識                                                           */
 /* ---------------------------------------------------------------- */
-function tick()
+function Camera_recognizeQR()
 {
     try {
-        loadingMessage.innerText = "⌛ カメラ起動中..."
-        if (video_qr.readyState === video_qr.HAVE_ENOUGH_DATA) {
-            loadingMessage.hidden = true;
+
+        const video_camera       = document.getElementById("video_camera");             // カメラ
+        const div_cameraMsg      = document.getElementById("div_cameraMsg");            // カメラメッセージ
+        const canvas_video       = document.getElementById("canvas_video");             // カメラ撮像CANVAS
+        const canvas_video2d     = canvas_video.getContext("2d");                       // カメラ撮像CANVAS（二次元）
+        const div_recognition    = document.getElementById("div_recognition");          // 認識結果
+        const div_recognitionMsg = document.getElementById("div_recognitionMsg");       // 認識結果メッセージ
+        const div_qrCode         = document.getElementById("div_qrCode");               // 認識結果QRコード
+
+        div_cameraMsg.innerText = "⌛ カメラ起動中..."
+
+        if (video_camera.readyState === video_camera.HAVE_ENOUGH_DATA) {
+
+            div_cameraMsg.hidden = true;
             canvas_video.hidden = false;
-            outputContainer.hidden = false;
+            div_recognition.hidden = false;
 
-            canvas_video.height = video_qr.videoHeight;
-            canvas_video.width = video_qr.videoWidth;
-            canvas_2d.drawImage(video_qr, 0, 0, canvas_video.width, canvas_video.height);
+            // -- 撮像表示 -------------------------------------------------------
+            canvas_video.height = video_camera.videoHeight;
+            canvas_video.width = video_camera.videoWidth;
 
+            canvas_video2d.drawImage(video_camera, 0, 0, canvas_video.width, canvas_video.height);
+            // -------------------------------------------------------------------
+
+            // -- QR読取ガイド線 -------------------------------------------------
             edgeLen = canvas_video.height / 2;
 
-            drawLine({x:canvas_video.width / 4          , y:canvas_video.height / 4          }, {x:canvas_video.width / 4          , y:canvas_video.height / 4 + edgeLen}, "#ffffff");
-            drawLine({x:canvas_video.width / 4          , y:canvas_video.height / 4 + edgeLen}, {x:canvas_video.width / 4 + edgeLen, y:canvas_video.height / 4 + edgeLen}, "#ffffff");
-            drawLine({x:canvas_video.width / 4 + edgeLen, y:canvas_video.height / 4 + edgeLen}, {x:canvas_video.width / 4 + edgeLen, y:canvas_video.height / 4          }, "#ffffff");
-            drawLine({x:canvas_video.width / 4 + edgeLen, y:canvas_video.height / 4          }, {x:canvas_video.width / 4          , y:canvas_video.height / 4          }, "#ffffff");
+            Canvas2d_drawLine(canvas_video2d, {x:canvas_video.width / 4          , y:canvas_video.height / 4          }, {x:canvas_video.width / 4          , y:canvas_video.height / 4 + edgeLen}, "#ffffff");
+            Canvas2d_drawLine(canvas_video2d, {x:canvas_video.width / 4          , y:canvas_video.height / 4 + edgeLen}, {x:canvas_video.width / 4 + edgeLen, y:canvas_video.height / 4 + edgeLen}, "#ffffff");
+            Canvas2d_drawLine(canvas_video2d, {x:canvas_video.width / 4 + edgeLen, y:canvas_video.height / 4 + edgeLen}, {x:canvas_video.width / 4 + edgeLen, y:canvas_video.height / 4          }, "#ffffff");
+            Canvas2d_drawLine(canvas_video2d, {x:canvas_video.width / 4 + edgeLen, y:canvas_video.height / 4          }, {x:canvas_video.width / 4          , y:canvas_video.height / 4          }, "#ffffff");
+            // -------------------------------------------------------------------
 
-            var imageData = canvas_2d.getImageData(canvas_video.width / 4, canvas_video.height / 4, edgeLen, edgeLen);
+            // -- QR認識 ---------------------------------------------------------
+            const imageData = canvas_video2d.getImageData(canvas_video.width / 4, canvas_video.height / 4, edgeLen, edgeLen);
 
-            var code = jsQR(imageData.data, imageData.width, imageData.height, {
+            const qr = jsQR(imageData.data, imageData.width, imageData.height, {
                 inversionAttempts: "dontInvert",
             });
 
-            if (code) {
-                drawLine({x:code.location.topLeftCorner.x     + canvas_video.width / 4, y:code.location.topLeftCorner.y     + canvas_video.height / 4}, {x:code.location.topRightCorner.x    + canvas_video.width / 4, y:code.location.topRightCorner.y    + canvas_video.height / 4}, "#FF3B58");
-                drawLine({x:code.location.topRightCorner.x    + canvas_video.width / 4, y:code.location.topRightCorner.y    + canvas_video.height / 4}, {x:code.location.bottomRightCorner.x + canvas_video.width / 4, y:code.location.bottomRightCorner.y + canvas_video.height / 4}, "#FF3B58");
-                drawLine({x:code.location.bottomRightCorner.x + canvas_video.width / 4, y:code.location.bottomRightCorner.y + canvas_video.height / 4}, {x:code.location.bottomLeftCorner.x  + canvas_video.width / 4, y:code.location.bottomLeftCorner.y  + canvas_video.height / 4}, "#FF3B58");
-                drawLine({x:code.location.bottomLeftCorner    + canvas_video.width / 4, y:code.location.bottomLeftCorner.y  + canvas_video.height / 4}, {x:code.location.topLeftCorner.x     + canvas_video.width / 4, y:code.location.topLeftCorner.y     + canvas_video.height / 4}, "#FF3B58");
-                outputMessage.hidden = true;
-                outputData.parentElement.hidden = false;
-                outputData.innerText = code.data;
+            if (qr) {
+
+                // -- 認識結果を赤枠囲み ---------------------------------------------
+                Canvas2d_drawLine(canvas_video2d, {x:qr.location.topLeftCorner.x     + canvas_video.width / 4, y:qr.location.topLeftCorner.y     + canvas_video.height / 4}, {x:qr.location.topRightCorner.x    + canvas_video.width / 4, y:qr.location.topRightCorner.y    + canvas_video.height / 4}, "#FF3B58");
+                Canvas2d_drawLine(canvas_video2d, {x:qr.location.topRightCorner.x    + canvas_video.width / 4, y:qr.location.topRightCorner.y    + canvas_video.height / 4}, {x:qr.location.bottomRightCorner.x + canvas_video.width / 4, y:qr.location.bottomRightCorner.y + canvas_video.height / 4}, "#FF3B58");
+                Canvas2d_drawLine(canvas_video2d, {x:qr.location.bottomRightCorner.x + canvas_video.width / 4, y:qr.location.bottomRightCorner.y + canvas_video.height / 4}, {x:qr.location.bottomLeftCorner.x  + canvas_video.width / 4, y:qr.location.bottomLeftCorner.y  + canvas_video.height / 4}, "#FF3B58");
+                Canvas2d_drawLine(canvas_video2d, {x:qr.location.bottomLeftCorner    + canvas_video.width / 4, y:qr.location.bottomLeftCorner.y  + canvas_video.height / 4}, {x:qr.location.topLeftCorner.x     + canvas_video.width / 4, y:qr.location.topLeftCorner.y     + canvas_video.height / 4}, "#FF3B58");
+                // -------------------------------------------------------------------
+
+                // -- 認識結果表示 ---------------------------------------------------
+                div_recognitionMsg.hidden = true;
+                div_qrCode.parentElement.hidden = false;
+                div_qrCode.innerText = qr.data;
+                // -------------------------------------------------------------------
+
+                // -- 図面取得 -------------------------------------------------------
                 BluePrint_get();
+                // -------------------------------------------------------------------
+
                 return true;
+
             } else {
-                outputMessage.hidden = false;
-                outputData.parentElement.hidden = true;
+
+                div_recognitionMsg.hidden = false;
+                div_qrCode.parentElement.hidden = true;
+
             }
+            // -------------------------------------------------------------------
         }
 
-        requestAnimationFrame(tick);
+        requestAnimationFrame(Camera_recognizeQR);
+
     } catch (e) {
+
         alert(e.message);
+
     }
 }
 /* ---------------------------------------------------------------- */
 
+
+/* ---------------------------------------------------------------- */
+/* ページ初期化                                                     */
+/* ---------------------------------------------------------------- */
 function Page_init()
 {
-    if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("sw.js")
-            .then(function (registration)
-            {
-                console.log("serviceWorker registed.");
-            }).catch(function (error)
-            {
-                alert("ServiceWorkerに対応していません。" + error);
-            });
-    }
-
-    const lst_actions = {
-        Symbols: [
-        ],
-        Do: [
-            {
-                Action    : "HtmlValue_set",
-                Parameters: {
-                    Mapping: [
-                        { Html : { Quote: "img_document" } , Value: { Quote: "" } }
-                    ]
-                }
-            },
-            {
-                Action: "ViewTable_delete",
-                Parameters: {
-                    Table: { Quote: "table_documents" }
-                }
-            },
-        ]
-    };
-
-//    const json_actions = JSON.stringify(lst_actions);
-//    Action_do(json_actions);
-
-    document.getElementById("button_scan").addEventListener("click", Scan_start);
+    ServiceWorker_register();
+    Camera_init();
 }
+/* ---------------------------------------------------------------- */
 
+
+/* ---------------------------------------------------------------- */
+/* 認識再開                                                         */
+/* ---------------------------------------------------------------- */
 function Scan_start()
 {
     const lst_actions = {
@@ -164,9 +223,14 @@ function Scan_start()
     Action_do(json_actions);
 
     document.getElementById("button_scan").disabled = true;
-    requestAnimationFrame(tick);
+    requestAnimationFrame(Camera_recognizeQR);
 }
+/* ---------------------------------------------------------------- */
 
+
+/* ---------------------------------------------------------------- */
+/* 図面取得                                                         */
+/* ---------------------------------------------------------------- */
 function BluePrint_get()
 {
     const lst_actions = {
@@ -181,6 +245,7 @@ function BluePrint_get()
                 Action    : "Action_LoadingBar_open"
             },
             {
+                Comment   : "図面画像白紙化",
                 Action    : "HtmlValue_set",
                 Parameters: {
                     Mapping: [
@@ -189,21 +254,24 @@ function BluePrint_get()
                 }
             },
             {
-                Action: "ViewTable_delete",
+                Comment   : "図面一覧初期化",
+                Action    : "ViewTable_delete",
                 Parameters: {
                     Table: { Quote: "table_documents" }
                 }
             },
             {
-                Action: "Action_ViewCard_get",
+                Comment   : "工程票QR取得",
+                Action    : "Action_ViewCard_get",
                 Parameters: {
                     Mapping: [
-                        { Key: { Quote: "WIP_CD" }, Html: { Quote: "outputData" } }
+                        { Key: { Quote: "WIP_CD" }, Html: { Quote: "div_qrCode" } }
                     ]
                 },
                 ReturnTo: "qr_wip"
             },
             {
+                Comment   : "仕掛情報取得",
                 Action    : "RestApi_call",
                 Parameters: {
                     URL       : { Quote: "http://172.16.2.247/BluePrint/api/Wip" },
@@ -215,6 +283,7 @@ function BluePrint_get()
                 ReturnTo  : "lst_wip"
             },
             {
+                Comment   : "図面一覧取得",
                 Action    : "RestApi_call",
                 Parameters: {
                     URL       : { Quote: "http://172.16.2.247/BluePrint/api/DocumentMeta" },
@@ -242,6 +311,7 @@ function BluePrint_get()
             },
 */
             {
+                Comment   : "図面一覧表示",
                 Action    : "ViewTable_display",
                 Parameters: {
                     Table: { Quote: "table_documents" },
@@ -264,6 +334,7 @@ function BluePrint_get()
                                         Action    : "Action_LoadingBar_open"
                                     },
                                     {
+                                        Comment   : "図面URL",
                                         Action    : "String_concat",
                                         Parameters: {
                                             Strings: {
@@ -275,6 +346,7 @@ function BluePrint_get()
                                         ReturnTo: "url_img"
                                     },
                                     {
+                                        Comment   : "図面ダウンロード",
                                         Action    : "HtmlValue_set",
                                         Parameters: {
                                             Mapping: [
@@ -302,3 +374,4 @@ function BluePrint_get()
 
     document.getElementById("button_scan").disabled = false;
 }
+/* ---------------------------------------------------------------- */
