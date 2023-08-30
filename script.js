@@ -1,5 +1,3 @@
-window.addEventListener("load", Page_init);
-document.getElementById("button_scan").addEventListener("click", Scan_start);
 
 
 /* ---------------------------------------------------------------- */
