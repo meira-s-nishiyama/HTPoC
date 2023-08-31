@@ -45,6 +45,7 @@ console.log("START: Camera_init()");
     navigator.mediaDevices.getUserMedia(lst_config)
     .then(function(stream)
     {
+alert("START: getUserMedia()");
         // -- 最大望遠 --------------------------------------------------------
         const [track]      = stream.getVideoTracks();
         const capabilities = track.getCapabilities();
@@ -73,7 +74,8 @@ console.log("START: Camera_init()");
         video_camera.play();
         // -------------------------------------------------------------------
 alert("END: Camera_init()");
-console.log("START: Camera_init()");
+console.log("END: Camera_init()");
+alert("END: getUserMedia()");
         requestAnimationFrame(Camera_recognizeQR);
     });
     // -------------------------------------------------------------------
