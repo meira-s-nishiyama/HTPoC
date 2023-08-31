@@ -32,10 +32,17 @@ function ServiceWorker_register()
 function Camera_init()
 {
     // -- 設定 -----------------------------------------------------------
+ /*
     const lst_config = {
         video: {
             facingMode: "environment",
             zoom      : true
+        }
+    };
+*/
+    const lst_config = {
+        video: {
+            facingMode: "environment"
         }
     };
     // -------------------------------------------------------------------
