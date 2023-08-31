@@ -77,6 +77,10 @@ alert("END: Camera_init()");
 console.log("END: Camera_init()");
 alert("END: getUserMedia()");
         requestAnimationFrame(Camera_recognizeQR);
+    })
+    .catch(function(e)
+    {
+        alert(e);
     });
     // -------------------------------------------------------------------
 }
