@@ -80,6 +80,7 @@ alert("END: getUserMedia()");
     })
     .catch(function(e)
     {
+        alert("REJECT: Camera_init()");
         alert(e);
     });
     // -------------------------------------------------------------------
