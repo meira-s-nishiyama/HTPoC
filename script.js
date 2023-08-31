@@ -39,7 +39,7 @@ function Camera_init()
         }
     };
     // -------------------------------------------------------------------
-
+alert("START: Camera_init()");
     // -- 無限ループ開始 ※コールバック化すべし。 ------------------------
     navigator.mediaDevices.getUserMedia(lst_config)
     .then(function(stream)
@@ -71,7 +71,7 @@ function Camera_init()
         video_camera.setAttribute("playsinline", true);
         video_camera.play();
         // -------------------------------------------------------------------
-
+alert("END: Camera_init()");
         requestAnimationFrame(Camera_recognizeQR);
     });
     // -------------------------------------------------------------------
