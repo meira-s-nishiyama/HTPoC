@@ -41,6 +41,7 @@ function Camera_init()
     // -------------------------------------------------------------------
 alert("START: Camera_init()");
 console.log("START: Camera_init()");
+debugger;
     // -- 無限ループ開始 ※コールバック化すべし。 ------------------------
     navigator.mediaDevices.getUserMedia(lst_config)
     .then(function(stream)
